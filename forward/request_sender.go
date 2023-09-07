@@ -23,6 +23,7 @@ package forward
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"golang.org/x/net/context"
@@ -241,6 +242,7 @@ func (s *requestSender) AttemptRetry() ([]byte, error) {
 	dests := s.LookupKeys(s.keys, s.role)
 	if len(dests) != 1 {
 		s.emitter.EmitEvent(RetryAbortEvent{errDestinationsDiverged.Error()})
+		fmt.Println(fmt.Sprintf("%s", dests))
 		return nil, errDestinationsDiverged
 	}
 

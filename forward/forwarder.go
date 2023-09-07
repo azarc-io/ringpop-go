@@ -83,6 +83,7 @@ func (f *Forwarder) mergeDefaultOptions(opts *Options) *Options {
 	}
 	merged.Headers = opts.Headers
 	merged.Ctx = opts.Ctx
+	merged.Role = opts.Role
 
 	return &merged
 }
