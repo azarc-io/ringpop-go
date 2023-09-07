@@ -118,8 +118,8 @@ func TestConsistentLookupsOnDuplicates(t *testing.T) {
 	ring2.AddMembers(member2)
 	ring2.AddMembers(member1)
 
-	lookup1, _ := ring1.Lookup("id#1")
-	lookup2, _ := ring2.Lookup("id#1")
+	lookup1, _ := ring1.Lookup("id#1", "")
+	lookup2, _ := ring2.Lookup("id#1", "")
 	assert.Equal(t, lookup1, lookup2, "Order of adds does not affect lookups")
 	assert.Equal(t, ring1.checksums["replica"], ring2.checksums["replica"], "Order of adds does not affect checksums")
 }
@@ -206,16 +206,54 @@ func TestLookup(t *testing.T) {
 	ring.AddMembers(fakeMember{address: "server1"})
 	ring.AddMembers(fakeMember{address: "server2"})
 
-	_, ok := ring.Lookup("key")
+	_, ok := ring.Lookup("key", "")
 
 	assert.True(t, ok, "expected Lookup to hash key to a server")
 
 	ring.RemoveMembers(fakeMember{address: "server1"})
 	ring.RemoveMembers(fakeMember{address: "server2"})
 
-	_, ok = ring.Lookup("key")
+	_, ok = ring.Lookup("key", "")
 
 	assert.False(t, ok, "expected Lookup to find no server for key to hash to")
+}
+
+func TestLookupByRole(t *testing.T) {
+	addressesA := []string{"server1", "server2"}
+	addressesB := []string{"server3"}
+
+	ring := New(farm.Fingerprint32, 10)
+	ring.AddMembers(fakeMember{address: "server1", labels: map[string]string{"role": "a"}})
+	ring.AddMembers(fakeMember{address: "server2", labels: map[string]string{"role": "a"}})
+	ring.AddMembers(fakeMember{address: "server3", labels: map[string]string{"role": "b"}})
+
+	addr, ok := ring.Lookup("key", "a")
+	assert.True(t, ok, "expected Lookup to hash key to a server")
+	assert.Contains(t, addressesA, addr)
+	assert.Equal(t, addressesA[1], addr)
+	addr, ok = ring.Lookup("key12", "a")
+	assert.True(t, ok, "expected Lookup to hash key to a server")
+	assert.Contains(t, addressesA, addr)
+	assert.Equal(t, addressesA[0], addr)
+	addr, ok = ring.Lookup("key", "b")
+	assert.True(t, ok, "expected Lookup to hash key to a server")
+	assert.Contains(t, addressesB, addr)
+	addr, ok = ring.Lookup("key", "*")
+	assert.True(t, ok, "expected Lookup to hash key to a server")
+	assert.Contains(t, append(addressesA, addressesB...), addr)
+
+	ring.RemoveMembers(fakeMember{address: "server1"})
+	ring.RemoveMembers(fakeMember{address: "server2"})
+
+	_, ok = ring.Lookup("key", "")
+	assert.False(t, ok, "expected Lookup to find no server for key to hash to")
+
+	_, ok = ring.Lookup("key", "a")
+	assert.False(t, ok, "expected Lookup to not find hash for role")
+
+	addr, ok = ring.Lookup("key", "b")
+	assert.True(t, ok, "expected Lookup to hash key to a server")
+	assert.Contains(t, addressesB, addr)
 }
 
 func TestLookupDistribution(t *testing.T) {
@@ -230,7 +268,7 @@ func TestLookupDistribution(t *testing.T) {
 
 	servers := make(map[string]bool)
 	for _, key := range keys {
-		server, ok := ring.Lookup(key)
+		server, ok := ring.Lookup(key, "")
 		assert.True(t, ok, "expected that the lookup is a success")
 		servers[server] = true
 	}
@@ -247,7 +285,7 @@ func TestLookupNNoGaps(t *testing.T) {
 	ring.AddMembers(members...)
 	key := "key with small hash"
 
-	servers := ring.LookupN(key, 20)
+	servers := ring.LookupN(key, "", 20)
 
 	serversSet := make(map[string]struct{})
 	for _, s := range servers {
@@ -301,7 +339,7 @@ func TestLookupNOverflow(t *testing.T) {
 	ring := New(farm.Fingerprint32, 10)
 	members := genMembers(1, 1, 10, false)
 	ring.AddMembers(members...)
-	assert.Len(t, ring.LookupN("a random key", 20), 10, "expected that LookupN caps results when n is larger than number of servers")
+	assert.Len(t, ring.LookupN("a random key", "", 20), 10, "expected that LookupN caps results when n is larger than number of servers")
 }
 
 func TestLookupNLoopAround(t *testing.T) {
@@ -317,17 +355,17 @@ func TestLookupNLoopAround(t *testing.T) {
 		break
 	}
 
-	firstResult, ok := ring.Lookup("a random key")
+	firstResult, ok := ring.Lookup("a random key", "")
 	assert.True(t, ok, "expected to obtain server that owns key")
 	assert.NotEqual(t, firstResult, firstInTree, "expected to test case where the key doesn't land at the first tree node")
 
-	result := ring.LookupN("a random key", 9)
+	result := ring.LookupN("a random key", "", 9)
 	assert.Contains(t, result, firstResult, "expected to have looped around the ring")
 }
 
 func TestLookupN(t *testing.T) {
 	ring := New(farm.Fingerprint32, 10)
-	servers := ring.LookupN("nil", 5)
+	servers := ring.LookupN("nil", "", 5)
 	assert.Len(t, servers, 0, "expected no servers")
 
 	unique := make(map[string]bool)
@@ -335,7 +373,7 @@ func TestLookupN(t *testing.T) {
 	members := genMembers(1, 1, 10, false)
 	ring.AddMembers(members...)
 
-	servers = ring.LookupN("key", 5)
+	servers = ring.LookupN("key", "", 5)
 	assert.Len(t, servers, 5, "expected five servers to be returned by lookup")
 	for _, server := range servers {
 		unique[server] = true
@@ -344,7 +382,7 @@ func TestLookupN(t *testing.T) {
 
 	unique = make(map[string]bool)
 
-	servers = ring.LookupN("another key", 100)
+	servers = ring.LookupN("another key", "", 100)
 	assert.Len(t, servers, 10, "expected to get max number of servers")
 	for _, server := range servers {
 		unique[server] = true
@@ -354,7 +392,7 @@ func TestLookupN(t *testing.T) {
 	unique = make(map[string]bool)
 
 	ring.RemoveMembers(members[0])
-	servers = ring.LookupN("yet another key", 10)
+	servers = ring.LookupN("yet another key", "", 10)
 	assert.Len(t, servers, 9, "expected to get nine servers")
 	for _, server := range servers {
 		unique[server] = true
@@ -431,7 +469,7 @@ func TestLookupNOrder(t *testing.T) {
 			})
 		}
 
-		assert.Equal(t, expectedServers, ring.LookupN(tt.label, tt.n), tt.label)
+		assert.Equal(t, expectedServers, ring.LookupN(tt.label, "", tt.n), tt.label)
 	}
 }
 
@@ -581,7 +619,7 @@ func TestLookupsWithIdentities(t *testing.T) {
 		for i := 0; i < numReplicaPoints; i++ {
 			key := fmt.Sprintf("%v#%v", identity, i)
 
-			value, has := ring.Lookup(key)
+			value, has := ring.Lookup(key, "")
 			assert.True(t, has)
 			assert.Equal(t, m.GetAddress(), value)
 		}
@@ -633,7 +671,7 @@ func BenchmarkHashRingLookupN(b *testing.B) {
 	b.StartTimer()
 	for n := 0; n < b.N; n++ {
 		for _, key := range keys {
-			_ = ring.LookupN(key, 10)
+			_ = ring.LookupN(key, "", 10)
 		}
 	}
 }

@@ -45,14 +45,14 @@ func (t treeTestInt) Compare(other interface{}) int {
 func makeTree() redBlackTree {
 	tree := redBlackTree{}
 
-	tree.Insert(treeTestInt(1), "one")
-	tree.Insert(treeTestInt(2), "two")
-	tree.Insert(treeTestInt(3), "three")
-	tree.Insert(treeTestInt(4), "four")
-	tree.Insert(treeTestInt(5), "five")
-	tree.Insert(treeTestInt(6), "six")
-	tree.Insert(treeTestInt(7), "seven")
-	tree.Insert(treeTestInt(8), "eight")
+	tree.Insert(treeTestInt(1), "one", "")
+	tree.Insert(treeTestInt(2), "two", "")
+	tree.Insert(treeTestInt(3), "three", "")
+	tree.Insert(treeTestInt(4), "four", "")
+	tree.Insert(treeTestInt(5), "five", "")
+	tree.Insert(treeTestInt(6), "six", "")
+	tree.Insert(treeTestInt(7), "seven", "")
+	tree.Insert(treeTestInt(8), "eight", "")
 
 	//               4,B
 	//             /     \
@@ -201,10 +201,10 @@ func TestDuplicateInsert(t *testing.T) {
 
 	assert.Equal(t, 8, tree.Size(), "expected tree to have 8 nodes")
 
-	assert.True(t, tree.Insert(treeTestInt(9), "nine"), "failed, expected insertion success")
+	assert.True(t, tree.Insert(treeTestInt(9), "nine", ""), "failed, expected insertion success")
 	assert.Equal(t, 9, tree.Size(), "expected tree to have 9 nodes")
 
-	assert.False(t, tree.Insert(treeTestInt(1), "one"), "success, expected insertion to fail (duplicate value)")
+	assert.False(t, tree.Insert(treeTestInt(1), "one", ""), "success, expected insertion to fail (duplicate value)")
 	assert.Equal(t, 9, tree.Size(), "expected tree to have 9 nodes")
 }
 
@@ -218,13 +218,13 @@ func TestRemoveInsert(t *testing.T) {
 
 	assert.Equal(t, 6, tree.Size(), "expected tree to have 6 nodes")
 
-	assert.True(t, tree.Insert(treeTestInt(2), "two"), "failed, expected insertions success")
+	assert.True(t, tree.Insert(treeTestInt(2), "two", ""), "failed, expected insertions success")
 	_, err := validateRedBlackTree(tree.root)
 	assert.NoError(t, err, "expected tree to be a valid red black tree")
 
 	assert.Equal(t, 7, tree.Size(), "expected tree to have 7 nodes")
 
-	assert.True(t, tree.Insert(treeTestInt(4), "four"), "failed, expected insertion success")
+	assert.True(t, tree.Insert(treeTestInt(4), "four", ""), "failed, expected insertion success")
 	_, err = validateRedBlackTree(tree.root)
 	assert.NoError(t, err, "expected tree to be a valid red black tree")
 
@@ -622,7 +622,7 @@ func TestBig(t *testing.T) {
 
 	for i := 0; i < 2000; i++ {
 		n := random.Intn(10000)
-		tree.Insert(treeTestInt(n), strconv.Itoa(n))
+		tree.Insert(treeTestInt(n), strconv.Itoa(n), "")
 	}
 
 	_, err := validateRedBlackTree(tree.root)
@@ -694,7 +694,7 @@ func BenchmarkRedBlackTreeInsert(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		tree := redBlackTree{}
 		for i := 0; i < 1000000; i++ {
-			tree.Insert(treeTestInt(i), "something")
+			tree.Insert(treeTestInt(i), "something", "")
 		}
 	}
 }
@@ -705,7 +705,7 @@ func BenchmarkRedBlackTreeDelete(b *testing.B) {
 		// stop timer while tree is created
 		tree := redBlackTree{}
 		for i := 0; i < 1000000; i++ {
-			tree.Insert(treeTestInt(i), "something")
+			tree.Insert(treeTestInt(i), "something", "")
 		}
 		b.StartTimer()
 		// restart timer and time only deletion
@@ -719,7 +719,7 @@ func BenchmarkRedBlackTreeSearch(b *testing.B) {
 	b.StopTimer()
 	tree := redBlackTree{}
 	for i := 0; i < 1000000; i++ {
-		tree.Insert(treeTestInt(i), "something")
+		tree.Insert(treeTestInt(i), "something", "")
 	}
 	b.StartTimer()
 	for n := 0; n < b.N; n++ {

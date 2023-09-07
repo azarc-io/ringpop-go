@@ -57,22 +57,42 @@ type replicaPoint struct {
 
 	// index of the replica point for a member
 	index int
+
+	// service role
+	role string
 }
 
 func (r replicaPoint) Compare(other interface{}) (result int) {
 	o := other.(replicaPoint)
 
+	//hr := hasRole(o, r)
+
 	result = r.hash - o.hash
+	//if hr {
+	//	result = result * -1
+	//} else {
+	//	result = result * 1
+	//}
 	if result != 0 {
 		return
 	}
 
 	result = strings.Compare(r.address, o.address)
+	//if hr {
+	//	result = result * -1
+	//} else {
+	//	result = result * 1
+	//}
 	if result != 0 {
 		return
 	}
 
 	result = r.index - o.index
+	//if hr {
+	//	result = result * -1
+	//} else {
+	//	result = result * 1
+	//}
 	return
 }
 
@@ -85,8 +105,9 @@ type HashRing struct {
 	hashfunc      func(string) int
 	replicaPoints int
 
-	serverSet map[string]struct{}
-	tree      *redBlackTree
+	serverSet  map[string]struct{}
+	serverRole map[string]string
+	tree       *redBlackTree
 
 	// legacyChecksum is the old checksum that is calculated only from the
 	// identities being added.
@@ -99,7 +120,8 @@ type HashRing struct {
 	// a copy to components that need the checksums
 	checksums map[string]uint32
 
-	logger bark.Logger
+	logger   bark.Logger
+	SelfRole string
 }
 
 // New instantiates and returns a new HashRing.
@@ -117,6 +139,7 @@ func New(hashfunc func([]byte) uint32, replicaPoints int) *HashRing {
 	}
 
 	r.serverSet = make(map[string]struct{})
+	r.serverRole = make(map[string]string)
 	r.tree = &redBlackTree{}
 	return r
 }
@@ -198,11 +221,15 @@ func (r *HashRing) replicaPointForServer(server membership.Member, replica int) 
 		// Due to backwards compatibility it's only used when we got an identity.
 		replicaStr = fmt.Sprintf("%s#%v", identity, replica)
 	}
+
+	role, _ := server.Label("role")
+
 	return replicaPoint{
 		hash:     r.hashfunc(replicaStr),
 		identity: identity,
 		address:  server.GetAddress(),
 		index:    replica,
+		role:     role,
 	}
 }
 
@@ -234,12 +261,14 @@ func (r *HashRing) addMemberNoLock(member membership.Member) bool {
 		return false
 	}
 	r.serverSet[member.GetAddress()] = struct{}{}
+	role, _ := member.Label("role")
 
+	r.serverRole[member.GetAddress()] = role
 	// add all replica points for the member
 	for i := 0; i < r.replicaPoints; i++ {
 		r.tree.Insert(
 			r.replicaPointForServer(member, i),
-			member.GetAddress(),
+			member.GetAddress(), role,
 		)
 	}
 
@@ -274,7 +303,7 @@ func (r *HashRing) removeMemberNoLock(member membership.Member) bool {
 		return false
 	}
 	delete(r.serverSet, member.GetAddress())
-
+	delete(r.serverRole, member.GetAddress())
 	for i := 0; i < r.replicaPoints; i++ {
 		r.tree.Delete(
 			r.replicaPointForServer(member, i),
@@ -363,8 +392,8 @@ func (r *HashRing) ServerCount() int {
 
 // Lookup returns the owner of the given key and whether the HashRing contains
 // the key at all.
-func (r *HashRing) Lookup(key string) (string, bool) {
-	strs := r.LookupN(key, 1)
+func (r *HashRing) Lookup(key, role string) (string, bool) {
+	strs := r.LookupN(key, role, 1)
 	if len(strs) == 0 {
 		return "", false
 	}
@@ -374,31 +403,32 @@ func (r *HashRing) Lookup(key string) (string, bool) {
 // LookupN returns the N servers that own the given key. Duplicates in the form
 // of virtual nodes are skipped to maintain a list of unique servers. If there
 // are less servers than N, we simply return all existing servers.
-func (r *HashRing) LookupN(key string, n int) []string {
+func (r *HashRing) LookupN(key, role string, n int) []string {
 	r.RLock()
-	servers := r.lookupNNoLock(key, n)
+	servers := r.lookupNNoLock(key, role, n)
 	r.RUnlock()
 	return servers
 }
 
 // This function isn't thread-safe, only call it when the HashRing is locked.
-func (r *HashRing) lookupNNoLock(key string, n int) []string {
+func (r *HashRing) lookupNNoLock(key, role string, n int) []string {
 	hash := r.hashfunc(key)
 	unique := make(map[valuetype]struct{})
 	orderedUnique := make([]valuetype, 0, n)
 
 	// lookup N unique servers from the red-black tree. If we have not
 	// collected all the servers we want, we have reached the
-	// end of the red-black tree and we need to loop around and inspect the
+	// end of the red-black tree, and we need to loop around and inspect the
 	// tree starting at 0.
-	r.tree.LookupOrderedNUniqueAt(n, replicaPoint{hash: hash}, unique, &orderedUnique)
+	r.tree.LookupOrderedNUniqueAt(n, replicaPoint{hash: hash, role: role}, unique, &orderedUnique)
 	if len(unique) < n {
-		r.tree.LookupOrderedNUniqueAt(n, replicaPoint{hash: 0}, unique, &orderedUnique)
+		r.tree.LookupOrderedNUniqueAt(n, replicaPoint{hash: 0, role: role}, unique, &orderedUnique)
 	}
 
 	var servers []string
 	for _, server := range orderedUnique {
 		servers = append(servers, server.(string))
 	}
+
 	return servers
 }

@@ -59,10 +59,10 @@ const (
 // A Sender is used to lookup the destinations for requests given a key.
 type Sender interface {
 	// Lookup should return a server address
-	Lookup(string) (string, error)
+	Lookup(string, string) (string, error)
 
 	// LookupN should return n server addresses
-	LookupN(string, int) ([]string, error)
+	LookupN(string, string, int) ([]string, error)
 
 	// WhoAmI should return the local address of the sender
 	WhoAmI() (string, error)
@@ -79,6 +79,7 @@ type Response struct {
 type Options struct {
 	NValue, RValue, WValue int
 	FanoutMode             FanoutMode
+	Role                   string
 }
 
 type callOptions struct {
@@ -133,7 +134,12 @@ func NewReplicator(s Sender, channel shared.SubChannel, logger log.Logger,
 
 	f := forward.NewForwarder(s, channel)
 
-	opts = mergeDefaultOptions(opts, &Options{3, 1, 3, Parallel})
+	var role string
+	if opts != nil {
+		role = opts.Role
+	}
+
+	opts = mergeDefaultOptions(opts, &Options{3, 1, 3, Parallel, role})
 	logger = logging.Logger("replicator")
 	if address, err := s.WhoAmI(); err == nil {
 		logger = logger.WithField("local", address)
@@ -167,14 +173,13 @@ func (r *Replicator) Write(keys []string, request []byte, operation string, fopt
 	return r.readWrite(write, keys, request, operation, fopts, opts)
 }
 
-func (r *Replicator) groupReplicas(keys []string, n int) (map[string][]string,
-	map[string][]string) {
+func (r *Replicator) groupReplicas(keys []string, n int, role string) (map[string][]string, map[string][]string) {
 
 	destsByKey := make(map[string][]string)
 	keysByDest := make(map[string][]string)
 
 	for _, key := range keys {
-		dests, _ := r.sender.LookupN(key, n)
+		dests, _ := r.sender.LookupN(key, role, n)
 		destsByKey[key] = dests
 
 		if len(dests) == 0 {
@@ -205,7 +210,7 @@ func (r *Replicator) readWrite(rw int, keys []string, request []byte, operation 
 		return nil, errors.New("rw value cannot exceed n value")
 	}
 
-	destsByKey, keysByDest := r.groupReplicas(keys, opts.NValue)
+	destsByKey, keysByDest := r.groupReplicas(keys, opts.NValue, opts.Role)
 	var dests []string
 	switch len(keys) {
 	case 1:

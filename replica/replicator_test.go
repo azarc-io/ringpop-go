@@ -48,11 +48,11 @@ func (d dummySender) WhoAmI() (string, error) {
 	return d.local, nil
 }
 
-func (d dummySender) Lookup(key string) (string, error) {
+func (d dummySender) Lookup(key, role string) (string, error) {
 	return d.lookup, nil
 }
 
-func (d dummySender) LookupN(key string, n int) ([]string, error) {
+func (d dummySender) LookupN(key, role string, n int) ([]string, error) {
 	return d.lookupN, nil
 }
 
@@ -138,7 +138,7 @@ func (s *ReplicatorTestSuite) TestRead() {
 	s.ResetLookupN()
 
 	var ping = Ping{From: "127.0.0.1:3001"}
-	var dests, err = s.sender.LookupN("key", 3)
+	var dests, err = s.sender.LookupN("key", "", 3)
 	s.NoError(err)
 
 	// parallel
@@ -179,7 +179,7 @@ func (s *ReplicatorTestSuite) TestMultipleKeys() {
 	s.ResetLookupN()
 
 	var ping = Ping{From: "127.0.0.1:3001"}
-	var dests, err = s.sender.LookupN("key", 3)
+	var dests, err = s.sender.LookupN("key", "", 3)
 	s.NoError(err)
 
 	// parallel
@@ -200,7 +200,7 @@ func (s *ReplicatorTestSuite) TestWrite() {
 	s.ResetLookupN()
 
 	var ping = Ping{From: "127.0.0.1:3001"}
-	var dests, err = s.sender.LookupN("key", 3)
+	var dests, err = s.sender.LookupN("key", "", 3)
 	s.NoError(err)
 
 	// parallel

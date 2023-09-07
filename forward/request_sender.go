@@ -66,6 +66,7 @@ type requestSender struct {
 	startTime, retryStartTime time.Time
 
 	logger log.Logger
+	role   string
 }
 
 // NewRequestSender returns a new request sender that can be used to forward a request to its destination
@@ -93,6 +94,7 @@ func newRequestSender(sender Sender, emitter events.EventEmitter, channel shared
 		rerouteRetries: opts.RerouteRetries,
 		headers:        opts.Headers,
 		ctx:            opts.Ctx,
+		role:           opts.Role,
 		logger:         logger,
 	}
 }
@@ -236,7 +238,7 @@ func (s *requestSender) AttemptRetry() ([]byte, error) {
 
 	s.emitter.EmitEvent(RetryAttemptEvent{})
 
-	dests := s.LookupKeys(s.keys)
+	dests := s.LookupKeys(s.keys, s.role)
 	if len(dests) != 1 {
 		s.emitter.EmitEvent(RetryAbortEvent{errDestinationsDiverged.Error()})
 		return nil, errDestinationsDiverged
@@ -268,11 +270,11 @@ func (s *requestSender) RerouteRetry(destination string) ([]byte, error) {
 // LookupKeys looks up the destinations of the keys provided. Returns a slice
 // of destinations. If multiple keys hash to the same destination, they will
 // be deduped.
-func (s *requestSender) LookupKeys(keys []string) []string {
+func (s *requestSender) LookupKeys(keys []string, role string) []string {
 	// Lookup and dedupe the destinations of the keys.
 	destSet := make(map[string]struct{})
 	for _, key := range keys {
-		dest, err := s.sender.Lookup(key)
+		dest, err := s.sender.Lookup(key, role)
 		if err != nil {
 			// TODO Do something better than swallowing these errors.
 			continue

@@ -101,7 +101,7 @@ func (r *router) handleChange(change swim.Change) {
 // Get the client for a certain destination from our internal cache, or
 // delegates the creation to the ClientFactory.
 func (r *router) GetClient(key string) (client interface{}, isRemote bool, err error) {
-	dest, err := r.ringpop.Lookup(key)
+	dest, err := r.ringpop.Lookup(key, "")
 	if err != nil {
 		return nil, false, err
 	}
@@ -118,7 +118,7 @@ type ClientResult struct {
 }
 
 func (r *router) GetNClients(key string, n int) ([]ClientResult, error) {
-	dests, err := r.ringpop.LookupN(key, n)
+	dests, err := r.ringpop.LookupN(key, "", n)
 	if err != nil {
 		return nil, err
 	}

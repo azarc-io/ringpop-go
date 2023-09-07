@@ -105,10 +105,10 @@ func (s *requestSenderTestSuite) TestLookupKeysDedupes() {
 	stubLookupWithKeys(s.mockSender, "192.0.2.1:1", "key1", "key2")
 	stubLookupWithKeys(s.mockSender, "192.0.2.1:2", "key3", "key4")
 
-	dests := s.requestSender.LookupKeys([]string{"key1", "key2"})
+	dests := s.requestSender.LookupKeys([]string{"key1", "key2"}, "")
 	s.Len(dests, 1, "dedupes single destination for multiple keys")
 
-	dests = s.requestSender.LookupKeys([]string{"key1", "key2", "key3", "key4"})
+	dests = s.requestSender.LookupKeys([]string{"key1", "key2", "key3", "key4"}, "")
 	s.Len(dests, 2, "dedupes multiple destinations for multiple keys")
 }
 

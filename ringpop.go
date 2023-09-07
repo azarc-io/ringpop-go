@@ -54,8 +54,8 @@ type Interface interface {
 	Uptime() (time.Duration, error)
 	Bootstrap(opts *swim.BootstrapOptions) ([]string, error)
 	Checksum() (uint32, error)
-	Lookup(key string) (string, error)
-	LookupN(key string, n int) ([]string, error)
+	Lookup(key, role string) (string, error)
+	LookupN(key, role string, n int) ([]string, error)
 	GetReachableMembers(predicates ...swim.MemberPredicate) ([]string, error)
 	CountReachableMembers(predicates ...swim.MemberPredicate) (int, error)
 
@@ -116,6 +116,7 @@ type Ringpop struct {
 
 	tickers   chan *clock.Ticker
 	startTime time.Time
+	role      string
 }
 
 // state represents the internal state of a Ringpop instance.
@@ -203,6 +204,7 @@ func (rp *Ringpop) init() error {
 	rp.node.AddListener(rp)
 
 	rp.ring = hashring.New(farm.Fingerprint32, rp.configHashRing.ReplicaPoints)
+	rp.ring.SelfRole = rp.role
 	rp.ring.AddListener(rp)
 
 	// add all members present in the membership of the node on startup.
@@ -650,14 +652,13 @@ func (rp *Ringpop) Checksum() (uint32, error) {
 // Lookup returns the address of the server in the ring that is responsible
 // for the specified key. It returns an error if the Ringpop instance is not
 // yet initialized/bootstrapped.
-func (rp *Ringpop) Lookup(key string) (string, error) {
+func (rp *Ringpop) Lookup(key, role string) (string, error) {
 	if !rp.Ready() {
 		return "", ErrNotBootstrapped
 	}
 
 	startTime := time.Now()
-
-	dest, success := rp.ring.Lookup(key)
+	dest, success := rp.ring.Lookup(key, role)
 
 	duration := time.Now().Sub(startTime)
 	rp.statter.RecordTimer(rp.getStatKey("lookup"), nil, duration)
@@ -679,13 +680,13 @@ func (rp *Ringpop) Lookup(key string) (string, error) {
 // LookupN returns the addresses of all the servers in the ring that are
 // responsible for the specified key. It returns an error if the Ringpop
 // instance is not yet initialized/bootstrapped.
-func (rp *Ringpop) LookupN(key string, n int) ([]string, error) {
+func (rp *Ringpop) LookupN(key, role string, n int) ([]string, error) {
 	if !rp.Ready() {
 		return nil, ErrNotBootstrapped
 	}
 	startTime := time.Now()
 
-	destinations := rp.ring.LookupN(key, n)
+	destinations := rp.ring.LookupN(key, role, n)
 
 	duration := time.Now().Sub(startTime)
 	rp.statter.RecordTimer(rp.getStatKey(fmt.Sprintf("lookupn.%d", n)), nil, duration)
@@ -769,7 +770,7 @@ func (rp *Ringpop) HandleOrForward(key string, request []byte, response *[]byte,
 		return false, ErrNotBootstrapped
 	}
 
-	dest, err := rp.Lookup(key)
+	dest, err := rp.Lookup(key, opts.Role)
 	if err != nil {
 		return false, err
 	}

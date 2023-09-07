@@ -3,6 +3,7 @@ package hashring
 type fakeMember struct {
 	address  string
 	identity string
+	labels   map[string]string
 }
 
 func (f fakeMember) GetAddress() string {
@@ -10,7 +11,12 @@ func (f fakeMember) GetAddress() string {
 }
 
 func (f fakeMember) Label(key string) (value string, has bool) {
-	return "", false
+	if f.labels == nil {
+		return "", false
+	}
+
+	l, ok := f.labels[key]
+	return l, ok
 }
 
 func (f fakeMember) Identity() string {

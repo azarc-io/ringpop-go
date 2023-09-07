@@ -140,7 +140,7 @@ func (s *ForwarderTestSuite) TestForwardJSON() {
 	var ping Ping
 	var pong Pong
 
-	dest, err := s.sender.Lookup("reachable")
+	dest, err := s.sender.Lookup("reachable", "")
 	s.NoError(err)
 
 	headerBytes := []byte(`{"hdr1": "val1"}`)
@@ -157,7 +157,7 @@ func (s *ForwarderTestSuite) TestForwardJSON() {
 func (s *ForwarderTestSuite) TestForwardJSONErrorResponse() {
 	var ping Ping
 
-	dest, err := s.sender.Lookup("reachable")
+	dest, err := s.sender.Lookup("reachable", "")
 	s.NoError(err)
 
 	_, err = s.forwarder.ForwardRequest(ping.Bytes(), dest, "test", "/error", []string{"reachable"},
@@ -168,7 +168,7 @@ func (s *ForwarderTestSuite) TestForwardJSONErrorResponse() {
 func (s *ForwarderTestSuite) TestForwardJSONInvalidEndpoint() {
 	var ping Ping
 
-	dest, err := s.sender.Lookup("reachable")
+	dest, err := s.sender.Lookup("reachable", "")
 	s.NoError(err)
 
 	_, err = s.forwarder.ForwardRequest(ping.Bytes(), dest, "test", "/invalid", []string{"reachable"},
@@ -182,7 +182,7 @@ func (s *ForwarderTestSuite) TestForwardJSONInvalidEndpoint() {
 }
 
 func (s *ForwarderTestSuite) TestForwardThrift() {
-	dest, err := s.sender.Lookup("reachable")
+	dest, err := s.sender.Lookup("reachable", "")
 	s.NoError(err)
 
 	request := &pingpong.PingPongPingArgs{
@@ -207,7 +207,7 @@ func (s *ForwarderTestSuite) TestForwardThrift() {
 }
 
 func (s *ForwarderTestSuite) TestForwardThriftWithCtxOption() {
-	dest, err := s.sender.Lookup("reachable")
+	dest, err := s.sender.Lookup("reachable", "")
 	s.NoError(err)
 
 	request := &pingpong.PingPongPingArgs{
@@ -237,7 +237,7 @@ func (s *ForwarderTestSuite) TestForwardThriftWithCtxOption() {
 }
 
 func (s *ForwarderTestSuite) TestForwardThriftErrorResponse() {
-	dest, err := s.sender.Lookup("reachable")
+	dest, err := s.sender.Lookup("reachable", "")
 	s.NoError(err)
 
 	request := &pingpong.PingPongPingArgs{
@@ -264,7 +264,7 @@ func (s *ForwarderTestSuite) TestForwardThriftErrorResponse() {
 func (s *ForwarderTestSuite) TestMaxRetries() {
 	var ping Ping
 
-	dest, err := s.sender.Lookup("immediate fail")
+	dest, err := s.sender.Lookup("immediate fail", "")
 	s.NoError(err)
 
 	_, err = s.forwarder.ForwardRequest(ping.Bytes(), dest, "test", "/ping", []string{"immediate fail"},
@@ -279,7 +279,7 @@ func (s *ForwarderTestSuite) TestMaxRetries() {
 func (s *ForwarderTestSuite) TestLookupErrorInRetry() {
 	var ping Ping
 
-	dest, err := s.sender.Lookup("immediate fail")
+	dest, err := s.sender.Lookup("immediate fail", "")
 	s.NoError(err)
 
 	_, err = s.forwarder.ForwardRequest(ping.Bytes(), dest, "test", "/ping", []string{"error"},
@@ -295,7 +295,7 @@ func (s *ForwarderTestSuite) TestLookupErrorInRetry() {
 func (s *ForwarderTestSuite) TestKeysDiverged() {
 	var ping Ping
 
-	dest, err := s.sender.Lookup("immediate fail")
+	dest, err := s.sender.Lookup("immediate fail", "")
 	s.NoError(err)
 
 	// no keys should result in destinations length of 0 during retry, causing abortion of request
@@ -310,7 +310,7 @@ func (s *ForwarderTestSuite) TestKeysDiverged() {
 func (s *ForwarderTestSuite) TestRequestTimesOut() {
 	var ping Ping
 
-	dest, err := s.sender.Lookup("unreachable")
+	dest, err := s.sender.Lookup("unreachable", "")
 	s.NoError(err)
 
 	_, err = s.forwarder.ForwardRequest(ping.Bytes(), dest, "test", "/ping", []string{"unreachable"}, tchannel.JSON, &Options{
@@ -326,7 +326,7 @@ func (s *ForwarderTestSuite) TestRequestRerouted() {
 	var ping Ping
 	var pong Pong
 
-	dest, err := s.sender.Lookup("immediate fail")
+	dest, err := s.sender.Lookup("immediate fail", "")
 	s.NoError(err)
 
 	res, err := s.forwarder.ForwardRequest(ping.Bytes(), dest, "test", "/ping", []string{"reachable"},
@@ -345,7 +345,7 @@ func (s *ForwarderTestSuite) TestRequestRerouted() {
 func (s *ForwarderTestSuite) TestRequestNoReroutes() {
 	var ping Ping
 
-	dest, err := s.sender.Lookup("immediate fail")
+	dest, err := s.sender.Lookup("immediate fail", "")
 	s.NoError(err)
 
 	_, err = s.forwarder.ForwardRequest(ping.Bytes(), dest, "test", "/ping", []string{"reachable"},

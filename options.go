@@ -75,7 +75,6 @@ type configuration struct {
 //
 // For more information, see:
 // http://commandcenter.blogspot.com/2014/01/self-referential-functions-and-design.html
-//
 type Option func(*Ringpop) error
 
 // applyOptions applies runtime configuration options to the specified Ringpop
@@ -105,6 +104,16 @@ func checkOptions(rp *Ringpop) []error {
 
 // Runtime options
 
+// InitialLabels initial labels to set when bootstrapping
+func InitialLabels(labels swim.LabelMap) Option {
+	return func(r *Ringpop) error {
+		for k, v := range labels {
+			r.config.InitialLabels[k] = v
+		}
+		return nil
+	}
+}
+
 // Clock is used to set the Clock mechanism.  Testing harnesses will typically
 // replace this with a mocked clock.
 func Clock(c clock.Clock) Option {
@@ -117,12 +126,21 @@ func Clock(c clock.Clock) Option {
 	}
 }
 
+// Role helps separate different members when generating a list of addresses
+func Role(role string) Option {
+	return func(r *Ringpop) error {
+		r.role = role
+		r.config.InitialLabels["role"] = role
+		return nil
+	}
+}
+
 // Channel is used to provide a TChannel instance that Ringpop should use for
 // all communication.
 //
 // Example:
 //
-//     rp, err := ringpop.New("my-app", ringpop.Channel(myChannel))
+//	rp, err := ringpop.New("my-app", ringpop.Channel(myChannel))
 //
 // Channel is a required option. The constructor will throw an error if this
 // option is not present.
@@ -138,12 +156,12 @@ func Channel(ch shared.TChannel) Option {
 //
 // Example:
 //
-//     rp, err := ringpop.New("my-app",
-//         ringpop.Channel(myChannel),
-//         ringpop.HashRingConfig(&HashRingConfiguration{
-//             ReplicaPoints: 100,
-//         }),
-//     )
+//	rp, err := ringpop.New("my-app",
+//	    ringpop.Channel(myChannel),
+//	    ringpop.HashRingConfig(&HashRingConfiguration{
+//	        ReplicaPoints: 100,
+//	    }),
+//	)
 //
 // See documentation on the `HashRingConfiguration` struct for more information
 // about what options are available.
@@ -205,10 +223,10 @@ func Identity(identity string) Option {
 //
 // Example:
 //
-//     ringpop.New("my-app",
-//         ringpop.Channel(myChannel),
-//         ringpop.Address("10.32.12.2:21130"),
-//     )
+//	ringpop.New("my-app",
+//	    ringpop.Channel(myChannel),
+//	    ringpop.Address("10.32.12.2:21130"),
+//	)
 //
 // You should make sure the address matches the listening address of the
 // TChannel object.

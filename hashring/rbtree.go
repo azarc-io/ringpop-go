@@ -39,6 +39,7 @@ type redBlackNode struct {
 	left  *redBlackNode
 	right *redBlackNode
 	red   bool
+	role  string
 }
 
 // Size returns the number of nodes in the redBlackTree
@@ -86,15 +87,18 @@ func doubleRotate(root *redBlackNode, dir bool) *redBlackNode {
 
 // Insert inserts a value and string into the tree
 // Returns true on succesful insertion, false if duplicate exists
-func (t *redBlackTree) Insert(key keytype, value valuetype) (ret bool) {
+func (t *redBlackTree) Insert(key keytype, value valuetype, role string) (ret bool) {
 	if t.root == nil {
 		t.root = &redBlackNode{
 			key:   key,
 			value: value,
+			role:  role,
 		}
 		ret = true
 	} else {
-		var head = &redBlackNode{}
+		var head = &redBlackNode{
+			role: role,
+		}
 
 		var dir = true
 		var last = true
@@ -113,6 +117,7 @@ func (t *redBlackTree) Insert(key keytype, value valuetype) (ret bool) {
 					key:   key,
 					value: value,
 					red:   true,
+					role:  role,
 				}
 				parent.setChild(dir, node)
 				ret = true
@@ -172,7 +177,11 @@ func (t *redBlackTree) Delete(key keytype) bool {
 		return false
 	}
 
-	var head = &redBlackNode{red: true} // fake red node to push down
+	var role string
+	if a, ok := key.(replicaPoint); ok {
+		role = a.role
+	}
+	var head = &redBlackNode{red: true, role: role} // fake red node to push down
 	var node = head
 	var parent *redBlackNode  //parent
 	var gparent *redBlackNode //grandparent
@@ -235,6 +244,7 @@ func (t *redBlackTree) Delete(key keytype) bool {
 	if found != nil {
 		found.key = node.key
 		found.value = node.value
+		found.role = node.role
 		parent.setChild(parent.right == node, node.Child(node.left == nil))
 		t.size--
 	}
@@ -249,6 +259,7 @@ func (t *redBlackTree) Delete(key keytype) bool {
 
 func (n *redBlackNode) search(key keytype) (valuetype, bool) {
 	cmp := n.key.Compare(key)
+
 	if cmp == 0 {
 		return n.value, true
 	} else if 0 < cmp {
@@ -327,6 +338,7 @@ func findNUniqueAbove(node *redBlackNode, n int, key keytype, result map[valuety
 
 	// skip left branch when all its keys are smaller than key
 	cmp := node.key.Compare(key)
+
 	if cmp >= 0 {
 		findNUniqueAbove(node.left, n, key, result, orderedResult)
 	}
@@ -338,10 +350,20 @@ func findNUniqueAbove(node *redBlackNode, n int, key keytype, result map[valuety
 
 	if cmp >= 0 {
 		if _, ok := result[node.value]; !ok && orderedResult != nil {
-			*orderedResult = append(*orderedResult, node.value)
+			hr := hasRole(node.key, key)
+			if hr {
+				*orderedResult = append(*orderedResult, node.value)
+				result[node.value] = struct{}{}
+			}
 		}
-		result[node.value] = struct{}{}
 	}
 
 	findNUniqueAbove(node.right, n, key, result, orderedResult)
+}
+
+func hasRole(key keytype, key2 keytype) bool {
+	a := key.(replicaPoint)
+	b := key2.(replicaPoint)
+
+	return a.role == b.role || b.role == "*"
 }

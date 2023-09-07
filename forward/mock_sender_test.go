@@ -28,7 +28,7 @@ func (_m *MockSender) WhoAmI() (string, error) {
 }
 
 // Lookup provides a mock function with given fields: _a0
-func (_m *MockSender) Lookup(_a0 string) (string, error) {
+func (_m *MockSender) Lookup(_a0, role string) (string, error) {
 	ret := _m.Called(_a0)
 
 	var r0 string

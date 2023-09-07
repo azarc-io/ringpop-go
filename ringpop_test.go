@@ -544,7 +544,7 @@ func (s *RingpopTestSuite) TestApp() {
 
 // TestLookupNotReady tests that Lookup fails when Ringpop is not ready.
 func (s *RingpopTestSuite) TestLookupNotReady() {
-	result, err := s.ringpop.Lookup("foo")
+	result, err := s.ringpop.Lookup("foo", "")
 	s.Error(err)
 	s.Empty(result)
 }
@@ -559,7 +559,7 @@ func (s *RingpopTestSuite) TestLookupNoDestination() {
 	}
 	s.ringpop.ring.RemoveMembers(member)
 
-	result, err := s.ringpop.Lookup("foo")
+	result, err := s.ringpop.Lookup("foo", "")
 	s.Equal("", result)
 	s.Error(err)
 }
@@ -568,7 +568,7 @@ func (s *RingpopTestSuite) TestLookupEmitStat() {
 	err := createSingleNodeCluster(s.ringpop)
 	s.Require().NoError(err, "unable to bootstrap single node cluster")
 
-	_, _ = s.ringpop.Lookup("foo")
+	_, _ = s.ringpop.Lookup("foo", "")
 
 	ok := s.stats.has("ringpop.127_0_0_1_3001.lookup")
 	s.True(ok, "missing lookup timer")
@@ -578,8 +578,8 @@ func (s *RingpopTestSuite) TestLookupNEmitStat() {
 	err := createSingleNodeCluster(s.ringpop)
 	s.Require().NoError(err, "unable to bootstrap single node cluster")
 
-	_, _ = s.ringpop.LookupN("foo", 3)
-	_, _ = s.ringpop.LookupN("foo", 5)
+	_, _ = s.ringpop.LookupN("foo", "", 3)
+	_, _ = s.ringpop.LookupN("foo", "", 5)
 
 	ok := s.stats.has("ringpop.127_0_0_1_3001.lookupn.3")
 	s.True(ok, "missing lookupn.3 timer")
@@ -590,7 +590,7 @@ func (s *RingpopTestSuite) TestLookupNEmitStat() {
 
 // TestLookupNNotReady tests that LookupN fails when Ringpop is not ready.
 func (s *RingpopTestSuite) TestLookupNNotReady() {
-	result, err := s.ringpop.LookupN("foo", 3)
+	result, err := s.ringpop.LookupN("foo", "", 3)
 	s.Error(err)
 	s.Nil(result)
 }
@@ -605,7 +605,7 @@ func (s *RingpopTestSuite) TestLookupNNoDestinations() {
 	}
 	s.ringpop.ring.RemoveMembers(member)
 
-	result, err := s.ringpop.LookupN("foo", 5)
+	result, err := s.ringpop.LookupN("foo", "", 5)
 	s.Empty(result)
 	s.Error(err)
 }
@@ -614,7 +614,7 @@ func (s *RingpopTestSuite) TestLookupN() {
 	err := createSingleNodeCluster(s.ringpop)
 	s.Require().NoError(err, "unable to bootstrap single node cluster")
 
-	result, err := s.ringpop.LookupN("foo", 5)
+	result, err := s.ringpop.LookupN("foo", "", 5)
 
 	s.Nil(err)
 	s.Equal(1, len(result), "LookupN returns not more results than number of nodes")
@@ -622,7 +622,7 @@ func (s *RingpopTestSuite) TestLookupN() {
 	members := genMembers(genAddresses(1, 10, 20))
 	s.ringpop.ring.AddMembers(members...)
 
-	result, err = s.ringpop.LookupN("foo", 5)
+	result, err = s.ringpop.LookupN("foo", "", 5)
 	s.Nil(err)
 	s.Equal(5, len(result), "LookupN returns N number of results")
 }

@@ -42,7 +42,7 @@ type Sender interface {
 	WhoAmI() (string, error)
 
 	// Lookup should return the server the request belongs to
-	Lookup(string) (string, error)
+	Lookup(string, string) (string, error)
 }
 
 // Options for the creation of a forwarder
@@ -53,6 +53,7 @@ type Options struct {
 	RetrySchedule  []time.Duration
 	Timeout        time.Duration
 	Headers        []byte
+	Role           string
 }
 
 func (f *Forwarder) defaultOptions() *Options {
