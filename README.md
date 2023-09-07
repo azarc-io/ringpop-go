@@ -1,7 +1,8 @@
 ringpop-go [![Build Status](https://github.com/uber/ringpop-go/workflows/Test/badge.svg)](https://github.com/uber/ringpop-go/actions?query=workflow%3ATest) [![Coverage Status](https://coveralls.io/repos/uber/ringpop-go/badge.svg?branch=master&service=github)](https://coveralls.io/github/uber/ringpop-go?branch=master)
 ==========
 
-**(This project is no longer under active development.)**
+This version of ringpop has been modified to support roles so that different services can join a single cluster but
+still communicate, it does this by filtering the address list by role name with support of a `*` wildcard.
 
 Ringpop is a library that brings cooperation and coordination to distributed
 applications. It maintains a consistent hash ring on top of a membership
